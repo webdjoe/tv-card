@@ -3,28 +3,6 @@ const LitElement = Object.getPrototypeOf(
 );
 const html = LitElement.prototype.html;
 
-const keys = {
-    "power": {"key": "KEY_POWER", "icon": "mdi:power"},
-    "volume_up": {"key": "KEY_VOLUP", "icon": "mdi:volume-plus"},
-    "volume_down": {"key": "KEY_VOLDOWN", "icon": "mdi:volume-minus"},
-    "volume_mute": {"key": "KEY_MUTE", "icon": "mdi:volume-mute"},
-    "return": {"key": "KEY_RETURN", "icon": "mdi:arrow-left"},
-    "source": {"key": "KEY_SOURCE", "icon": "mdi:video-input-hdmi"},
-    "info": {"key": "KEY_INFO", "icon": "mdi:television-guide"},
-    "home": {"key": "KEY_HOME", "icon": "mdi:home"},
-    "channel_up": {"key": "KEY_CHUP", "icon": "mdi:arrow-up"},
-    "channel_down": {"key": "KEY_CHDOWN", "icon": "mdi:arrow-down"},
-    "up": {"key": "KEY_UP", "icon": "mdi:chevron-up"},
-    "left": {"key": "KEY_LEFT", "icon": "mdi:chevron-left"},
-    "enter": {"key": "KEY_ENTER", "icon": "mdi:checkbox-blank-circle"},
-    "right": {"key": "KEY_RIGHT", "icon": "mdi:chevron-right"},
-    "down": {"key": "KEY_DOWN", "icon": "mdi:chevron-down"},
-    "rewind": {"key": "KEY_REWIND", "icon": "mdi:rewind"},
-    "play": {"key": "KEY_PLAY", "icon": "mdi:play"},
-    "pause": {"key": "KEY_PAUSE", "icon": "mdi:pause"},
-    "fast_forward": {"key": "KEY_FF", "icon": "mdi:fast-forward"},
-};
-
 const sources = {
     "netflix": {"source": "Netflix", "icon": "mdi:netflix"},
     "spotify": {"source": "Spotify", "icon": "mdi:spotify"},
@@ -49,6 +27,8 @@ class TVCardServices extends LitElement {
         this.custom_keys = {};
         this.custom_sources = {};
         this.custom_icons = {};
+		this.state_entity = '';	
+        this.rows = {};
 
         this.holdtimer = null;
         this.holdaction = null;
@@ -59,16 +39,22 @@ class TVCardServices extends LitElement {
     static get properties() {
         return {
             _hass: {},
-            _config: {},
+		    _config: {},
             _apps: {},
             trigger: {},
         };
     }
-
-    static getStubConfig() {
+	
+	static getStubConfig() {
         return {};
     }
 
+	set hass(hass) {
+        this._hass = hass;
+        if (this.volume_slider) this.volume_slider.hass = hass;
+        if (this._hassResolve) this._hassResolve();
+    }
+	
     getCardSize() {
         return 7;
     }
@@ -78,26 +64,170 @@ class TVCardServices extends LitElement {
             console.log("Invalid configuration");
             return;
         }
-
         this._config = { theme: "default", ...config };
-        this.custom_keys = config.custom_keys || {};
-        this.custom_sources = config.custom_sources || {};
-        this.custom_icons = config.custom_icons || {};
+        switch(config.platform) {
+            case "androidtv": {
+                this.keys = {
+                    "power": {"key": "POWER", "icon": "mdi:power"},
+                    "volume_up": {"key": "VOLUME_UP", "icon": "mdi:volume-plus"},
+                    "volume_down": {"key": "VOLUME_DOWN", "icon": "mdi:volume-minus"},
+                    "volume_mute": {"key": "MUTE", "icon": "mdi:volume-mute"},
+                    "return": {"key": "BACK", "icon": "mdi:arrow-left"},
+                    "home": {"key": "HOME", "icon": "mdi:home"},
+                    "up": {"key": "UP", "icon": "mdi:chevron-up"},
+                    "left": {"key": "LEFT", "icon": "mdi:chevron-left"},
+                    "enter": {"key": "CENTER", "icon": "mdi:checkbox-blank-circle"},
+                    "enter_hold": {"key": "CENTER", "icon": "mdi:checkbox-blank-circle"},
+                    "right": {"key": "RIGHT", "icon": "mdi:chevron-right"},
+                    "down": {"key": "DOWN", "icon": "mdi:chevron-down"},
+                    "rewind": {"key": "REWIND", "icon": "mdi:rewind"},
+                    "play": {"key": "RESUME", "icon": "mdi:play"},
+                    "fast_forward": {"key": "FAST_FORWARD", "icon": "mdi:fast-forward"},
+                    "menu": {"key": "MENU", "icon": "mdi:menu"},
+                    "settings": {"key": "SETTINGS", "icon": "mdi:cog"},
+                };
+                break;
+            }
+            case "webostv": {
+                this.keys = {
+                    "volume_up": {"key": "VOLUMEUP", "icon": "mdi:volume-plus"},
+                    "volume_down": {"key": "VOLUMEDOWN", "icon": "mdi:volume-minus"},
+                    "volume_mute": {"key": "MUTE", "icon": "mdi:volume-mute"},
+                    "return": {"key": "BACK", "icon": "mdi:arrow-left"},
+                    "info": {"key": "INFO", "icon": "mdi:information"},
+                    "home": {"key": "HOME", "icon": "mdi:home"},
+                    "channel_up": {"key": "CHANNELUP", "icon": "mdi:arrow-up"},
+                    "channel_down": {"key": "CHANNELDOWN", "icon": "mdi:arrow-down"},
+                    "up": {"key": "UP", "icon": "mdi:chevron-up"},
+                    "left": {"key": "LEFT", "icon": "mdi:chevron-left"},
+                    "enter": {"key": "ENTER", "icon": "mdi:checkbox-blank-circle"},
+                    "enter_hold": {"key": "ENTER", "icon": "mdi:checkbox-blank-circle"},
+                    "right": {"key": "RIGHT", "icon": "mdi:chevron-right"},
+                    "down": {"key": "DOWN", "icon": "mdi:chevron-down"},
+                    "play": {"key": "PLAY", "icon": "mdi:play"},
+                    "pause": {"key": "PAUSE", "icon": "mdi:pause"},
+                    "menu": {"key": "MENU", "icon": "mdi:menu"},
+                    "guide": {"key": "GUIDE", "icon": "mdi:television-guide"},
+                    "exit": {"key": "EXIT", "icon": "mdi:close"},
+                };
+                break;
+            }
+            case "roku": {
+                let remote_entity = !config.remote_entity ? "remote." + config.entity.split(".")[1] : config.remote_entity;
+                this.keys = {
+                    "power": {"icon": "mdi:power", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "power"}},
+                    "volume_up": {"icon": "mdi:volume-plus", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "volume_up"}},
+                    "volume_down": {"icon": "mdi:volume-minus", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "volume_down"}},
+                    "volume_mute": {"icon": "mdi:volume-mute", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "volume_mute"}},
+                    "return": {"icon": "mdi:arrow-left", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "back"}},
+                    "info": {"icon": "mdi:asterisk", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "info"}},
+                    "home": {"icon": "mdi:home", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "home"}},
+                    "channel_up": {"icon": "mdi:arrow-up", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "channel_up"}},
+                    "channel_down": {"icon": "mdi:arrow-down", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "channel_down"}},
+                    "up": {"icon": "mdi:chevron-up", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "up"}},
+                    "left": {"icon": "mdi:chevron-left", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "left"}},
+                    "enter": {"icon": "mdi:checkbox-blank-circle", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "select"}},
+                    "enter_hold": {"icon": "mdi:checkbox-blank-circle", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "select"}},
+                    "right": {"icon": "mdi:chevron-right", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "right"}},
+                    "down": {"icon": "mdi:chevron-down", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "down"}},
+                    "rewind": {"icon": "mdi:rewind", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "reverse"}},
+                    "play": {"icon": "mdi:play-pause", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "play"}},
+                    "fast_forward": {"icon": "mdi:fast-forward", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "forward"}},
+                };
+                break;
+            }
+            case "braviatv": {
+                let remote_entity = !config.remote_entity ? "remote." + config.entity.split(".")[1] : config.remote_entity;
+                this.keys = {
+                    "power": {"icon": "mdi:power", "service": "remote.toggle", "service_data": { "entity_id": remote_entity}},
+                    "source": {"icon": "mdi:import", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Input"}},
+                    "volume_up": {"icon": "mdi:volume-plus", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "VolumeUp"}},
+                    "volume_down": {"icon": "mdi:volume-minus", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "VolumeDown"}},
+                    "volume_mute": {"icon": "mdi:volume-mute", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Mute"}},
+                    "return": {"icon": "mdi:arrow-u-left-top", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Return"}},
+                    "info": {"icon": "mdi:asterisk", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "GGuide"}},
+                    "home": {"icon": "mdi:home", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Home"}},
+                    "channel_up": {"icon": "mdi:arrow-up", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "ChannelUp"}},
+                    "channel_down": {"icon": "mdi:arrow-down", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "ChannelDown"}},
+                    "up": {"icon": "mdi:chevron-up", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Up"}},
+                    "left": {"icon": "mdi:chevron-left", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Left"}},
+                    "enter": {"icon": "mdi:checkbox-blank-circle", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "DpadCenter"}},
+                    "right": {"icon": "mdi:chevron-right", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Right"}},
+                    "down": {"icon": "mdi:chevron-down", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Down"}},
+                    "rewind": {"icon": "mdi:rewind", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Rewind"}},
+                    "play": {"icon": "mdi:play-pause", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Play"}},
+                    "pause": {"icon": "mdi:pause", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Pause"}},
+                    "fast_forward": {"icon": "mdi:fast-forward", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Forward"}},
+                    "settings": {"icon": "mdi:cog", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Options"}},
+                    "assistant": {"icon": "mdi:google-assistant", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Assistant"}},
+                    "netflix": {"icon": "mdi:netflix", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Netflix"}},
+                    "num_0": {"icon": "mdi:numeric-0", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Num0"}},
+                    "num_1": {"icon": "mdi:numeric-1", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Num1"}},
+                    "num_2": {"icon": "mdi:numeric-2", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Num2"}},
+                    "num_3": {"icon": "mdi:numeric-3", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Num3"}},
+                    "num_4": {"icon": "mdi:numeric-4", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Num4"}},
+                    "num_5": {"icon": "mdi:numeric-5", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Num5"}},
+                    "num_6": {"icon": "mdi:numeric-6", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Num6"}},
+                    "num_7": {"icon": "mdi:numeric-7", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Num7"}},
+                    "num_8": {"icon": "mdi:numeric-8", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Num8"}},
+                    "num_9": {"icon": "mdi:numeric-9", "service": "remote.send_command", "service_data": { "entity_id": remote_entity, "command": "Num9"}},
+                };
+                break;
+            }
+            case "samsungtv":
+            default: {
+                this.keys = {
+                    "power": {"key": "KEY_POWER", "icon": "mdi:power"},
+                    "volume_up": {"key": "KEY_VOLUP", "icon": "mdi:volume-plus"},
+                    "volume_down": {"key": "KEY_VOLDOWN", "icon": "mdi:volume-minus"},
+                    "volume_mute": {"key": "KEY_MUTE", "icon": "mdi:volume-mute"},
+                    "return": {"key": "KEY_RETURN", "icon": "mdi:arrow-u-left-top"},
+                    "source": {"key": "KEY_SOURCE", "icon": "mdi:video-input-hdmi"},
+                    "info": {"key": "KEY_INFO", "icon": "mdi:television-guide"},
+                    "home": {"key": "KEY_HOME", "icon": "mdi:home"},
+                    "channel_up": {"key": "KEY_CHUP", "icon": "mdi:arrow-up-thin-circle-outline"},
+                    "channel_down": {"key": "KEY_CHDOWN", "icon": "mdi:arrow-down-thin-circle-outline"},
+                    "up": {"key": "KEY_UP", "icon": "mdi:chevron-up"},
+                    "left": {"key": "KEY_LEFT", "icon": "mdi:chevron-left"},
+                    "enter": {"key": "KEY_ENTER", "icon": "mdi:checkbox-blank-circle"},
+                    "enter_hold": {"key": "KEY_ENTER", "icon": "mdi:checkbox-blank-circle"},
+                    "right": {"key": "KEY_RIGHT", "icon": "mdi:chevron-right"},
+                    "down": {"key": "KEY_DOWN", "icon": "mdi:chevron-down"},
+                    "rewind": {"key": "KEY_REWIND", "icon": "mdi:rewind"},
+                    "play": {"key": "KEY_PLAY", "icon": "mdi:play"},
+                    "pause": {"key": "KEY_PAUSE", "icon": "mdi:pause"},
+                    "fast_forward": {"key": "KEY_FF", "icon": "mdi:fast-forward"},
+					"num_1": {"key": "KEY_1", "icon": "mdi:numeric-1"},
+					"num_2": {"key": "KEY_2", "icon": "mdi:numeric-2"},
+					"num_3": {"key": "KEY_3", "icon": "mdi:numeric-3"},
+					"num_4": {"key": "KEY_4", "icon": "mdi:numeric-4"},
+					"num_5": {"key": "KEY_5", "icon": "mdi:numeric-5"},
+					"num_6": {"key": "KEY_6", "icon": "mdi:numeric-6"},
+					"num_7": {"key": "KEY_7", "icon": "mdi:numeric-7"},
+					"num_8": {"key": "KEY_8", "icon": "mdi:numeric-8"},
+					"num_9": {"key": "KEY_9", "icon": "mdi:numeric-9"},
+					"num_0": {"key": "KEY_0", "icon": "mdi:numeric-0"},
+					"redbutton": {"key": "KEY_RED", "icon": "mdi:alpha-r-box"},
+					"greenbutton": {"key": "KEY_GREEN", "icon": "mdi:alpha-g-box"},
+					"yellowbutton": {"key": "KEY_YELLOW", "icon": "mdi:alpha-y-box"},
+					"bluebutton": {"key": "KEY_BLUE", "icon": "mdi:alpha-b-box"},
+                };
+            }
+        }
 
+        this.custom_keys    = config.custom_keys || {};
+        this.custom_sources = config.custom_sources || {};
+        this.custom_icons   = config.custom_icons || {};
+		this.state_entity   = config.state_entity || {};
+        this.rows           = config.rows || {};
+        
         this.loadCardHelpers();
         this.renderVolumeSlider();
     }
-
     isButtonEnabled(row, button) {
         if (!(this._config[row] instanceof Array)) return false;
 
         return this._config[row].includes(button);
-    }
-
-    set hass(hass) {
-        this._hass = hass;
-        if (this.volume_slider) this.volume_slider.hass = hass;
-        if (this._hassResolve) this._hassResolve();
     }
 
     get hass() {
@@ -117,9 +247,10 @@ class TVCardServices extends LitElement {
         this._helpersResolve = undefined;
         this._hassResolve = undefined;
 
+        let volume_entity = (this._config.volume_entity === undefined) ? this._config.entity : this._config.volume_entity;
         let slider_config = {
             "type": "custom:my-slider",
-            "entity": this._config.entity,
+            "entity": volume_entity,
             "height": "50px",
             "mainSliderColor": "white",
             "secondarySliderColor": "rgb(60, 60, 60)",
@@ -150,16 +281,53 @@ class TVCardServices extends LitElement {
 
     sendKey(key) {
         let entity_id = this._config.entity;
+		let platform = entity_id.match('input_text.') ? 'command' : this._config.platform;
+        switch ( platform ) {
+		case("androidtv"):
+            this._hass.callService("androidtv", "adb_command", {
+                command: key
+            }, { entity_id: entity_id });
+        break;
+        case("webostv"):
+            this._hass.callService("webostv", "button", {
+                button: key
+            }, { entity_id: entity_id });
+        break;
+        case("samsungtv"):
+			this._hass.callService("media_player", "play_media", {
+				media_content_id: key,
+				media_content_type: "send_key",
+			}, { entity_id: entity_id });
+		break;
+		default: // command via input_text. entity
+			if( entity_id.match('input_text.') ) {
+				this._hass.callService("input_text", "set_value",  { 
+					entity_id: entity_id, value: key, });
+			}else {
+				console.log("Invalid: no platform/(input text.) entity");
+			}
+        }  //  switch (
+    }  //   sendKey(key) {
 
-        this._hass.callService("media_player", "play_media", {
-            media_content_id: key,
-            media_content_type: "send_key",
-        }, { entity_id: entity_id });
+    sendAction(action){
+        let info = this.custom_keys[action] || this.custom_sources[action] || this.keys[action] || sources[action];
+
+        if (info.key) {
+            this.sendKey(info.key);
+        }
+        else if (info.source) {
+            this.changeSource(info.source);
+        }
+        else if (info.service) {
+            const [domain, service] = info.service.split(".", 2);
+            this._hass.callService(domain, service, info.service_data);
+        }
     }
 
     changeSource(source) {
         let entity_id = this._config.entity;
 
+        // supported by androidtv, samsungtv (i'm not sure about webostv)
         this._hass.callService("media_player", "select_source", {
             source: source,
             entity_id: entity_id,
@@ -169,9 +337,9 @@ class TVCardServices extends LitElement {
     onClick(event) {
         event.stopImmediatePropagation();
         let click_action = () => {
-            this.sendKey("KEY_ENTER");
+            this.sendAction("enter")
             if (this._config.enable_button_feedback === undefined || this._config.enable_button_feedback) fireEvent(window, "haptic", "light");
-        };
+        };  
         if (this._config.enable_double_click) {
             this.timer = setTimeout(click_action, 200);
         } else {
@@ -187,20 +355,26 @@ class TVCardServices extends LitElement {
         clearTimeout(this.timer);
         this.timer = null;
 
-        this.sendKey(this._config.double_click_keycode ? this._config.double_click_keycode : "KEY_RETURN");
+        this.sendAction(this._config.double_click_action ? this._config.double_click_action : "return")
         if (this._config.enable_button_feedback === undefined || this._config.enable_button_feedback) fireEvent(window, "haptic", "success");
     }
 
     onTouchStart(event) {
         event.stopImmediatePropagation();
 
-        this.holdaction = "KEY_ENTER";
+        this.holdaction = "enter_hold";
         this.holdtimer = setTimeout(() => {
-            //hold
-            this.holdinterval = setInterval(() => {
-                this.sendKey(this.holdaction);
+            if(this.holdaction == "enter_hold"){
+                this.sendAction(this.holdaction)
                 if (this._config.enable_button_feedback === undefined || this._config.enable_button_feedback) fireEvent(window, "haptic", "light");
-            }, 200);
+            }
+            else {
+                //hold
+                this.holdinterval = setInterval(() => {
+                    this.sendAction(this.holdaction)
+                    if (this._config.enable_button_feedback === undefined || this._config.enable_button_feedback) fireEvent(window, "haptic", "light");
+                }, 300);
+            }
         }, 700);
         window.initialX = event.touches[0].clientX;
         window.initialY = event.touches[0].clientY;
@@ -230,14 +404,16 @@ class TVCardServices extends LitElement {
 
         if (Math.abs(diffX) > Math.abs(diffY)) {
             // sliding horizontally
-            let key = diffX > 0 ? "KEY_LEFT" : "KEY_RIGHT";
-            this.holdaction = key;
-            this.sendKey(key);
+
+            let action = diffX > 0 ? "left" : "right";
+            this.holdaction = action;
+            this.sendAction(action);
         } else {
             // sliding vertically
-            let key = diffY > 0 ? "KEY_UP" : "KEY_DOWN";
-            this.holdaction = key;
-            this.sendKey(key);
+            let action = diffY > 0 ? "up" : "down";
+            this.holdaction = action;
+
+            this.sendAction(action);
         }
 
         if (this._config.enable_button_feedback === undefined || this._config.enable_button_feedback) fireEvent(window, "haptic", "selection");
@@ -247,27 +423,19 @@ class TVCardServices extends LitElement {
 
     handleActionClick(e) {
         let action = e.currentTarget.action;
-        let info = this.custom_keys[action] || this.custom_sources[action] || keys[action] || sources[action];
-
-        if (info.key) {
-            this.sendKey(info.key);
-        }
-        else if (info.source) {
-            this.changeSource(info.source);
-        }
-        else if (info.service) {
-            const [domain, service] = info.service.split(".", 2);
-            this._hass.callService(domain, service, info.service_data);
-        }
+        this.sendAction(action);
 
         if (this._config.enable_button_feedback === undefined || this._config.enable_button_feedback) fireEvent(window, "haptic", "light");
     }
 
     buildIconButton(action) {
-        let button_info = this.custom_keys[action] || this.custom_sources[action] || keys[action] || sources[action] || {};
+        let button_info = this.custom_keys[action] || this.custom_sources[action] || this.keys[action] || sources[action] || {};
+
         let icon = button_info.icon;
         let custom_svg_path = this.custom_icons[icon];
-
+        let color = ""; // var(--icon-primary-color);
+		color = this._getIconColor(action);
+		
         return html`
             <ha-icon-button
                 .action="${action}"
@@ -277,11 +445,58 @@ class TVCardServices extends LitElement {
                 >
                 <ha-icon
                     .icon="${!custom_svg_path? icon : ""}"
+					style="color: ${color}"
                 </ha-icon>
             </ha-icon-button>
         `;
     }
-    
+	
+	//	style="color='${color}'"
+	//	--card-mod-icon-color:"${color}"
+	//	color="${color}"
+				
+    _getIconColor(_action) {
+		let color = ''; // var(--icon-primary-color);
+		switch(_action) {
+			case('power'):
+				color = 'gold';
+				this._state = this._getStateValue(this.state_entity);
+				if( this._state == "" ) return color;
+		
+				switch(this._state) {
+					case('true'):
+					case('on'): color = 'tomato'; break;
+					case('false'):
+					case('off'): color = 'lime'; break
+					default: color = this._state.toString();	
+				}
+				break;
+			case('redbutton'):    color = 'tomato'; break;
+			case('greenbutton'):  color = 'mediumseagreen'; break;
+			case('yellowbutton'): color = 'gold'; break;
+			case('bluebutton'):   color = 'dodgerblue'; break;
+			case('check'):        color = 'gold'; break;
+			default: color = '';
+		}
+		return color;
+	}
+	
+	_getStateValue(entity) {
+		let stateStr = '';
+	  
+		if (this._hass && this._hass.states[entity]) {
+			const state = this._hass.states[entity];
+			stateStr = state.state || state.state == "" ? state.state.toString() : "Unavailable";  // .toString() escape 0 as false
+			if (stateStr == "Unavailable") {
+				throw new Error(`Entity ${entity} State Unavailable`);
+			}
+			return stateStr;
+		}else if( entity != '' ) {  // entity is config string 
+			return entity;
+		}
+		return '';
+	}
+	
     buildRow(content) {
         return html `
             <div class="row">
@@ -289,6 +504,7 @@ class TVCardServices extends LitElement {
             </div>
         `;
     }
+	
     buildButtonsFromActions(actions) {
         return actions.map((action) => this.buildIconButton(action));
     }
@@ -302,53 +518,101 @@ class TVCardServices extends LitElement {
             return html ``;
         }
 
-        const row_names = ["power_row", "channel_row", "apps_row", "source_row", "volume_row", "media_control_row", "navigation_row"];
+        const preset_rows = ["navigation_row","numpad_row","volume_row"]
 
         var content = [];
-        Object.keys(this._config).forEach((row_name) => {
-            if (row_names.includes(row_name)) {
-                let row_actions = this._config[row_name];
+        Object.keys(this.rows).forEach((row_name) => {
+			let row_actions = this.rows[row_name];
 
-                if (row_name === "volume_row") {
-                    let volume_row = [];
-                    if (this._config.volume_row == "buttons") {
-                        volume_row = [
-                            this.buildIconButton("volume_down"),
-                            this.buildIconButton("volume_mute"),
-                            this.buildIconButton("volume_up")
-                        ];
-                    } else if (this._config.volume_row == "slider") {
-                        volume_row = [this.volume_slider];
-                    }
-                    content.push(volume_row);
-                } else if (row_name === "navigation_row") {
-                    let navigation_row = [];
+			if (preset_rows.includes(row_name)) {
+				if (row_name === "volume_row") {
+					let volume_row = [];
+					if (this.rows.volume_row == "buttons") {
+						volume_row = [
+							this.buildIconButton("volume_mute"),
+							this.buildIconButton("volume_down"),
+							this.buildIconButton("volume_up"),
+						];
+					} else if (this.rows.volume_row == "slider") {
+						volume_row = [this.volume_slider];
+					}
+					content.push(volume_row);
+				} else if (row_name === "navigation_row") {
+					let navigation_row = [];
 
-                    if (this._config.navigation_row == "buttons") {
-                        let up_row = [this.buildIconButton("up")];
-                        let middle_row = [this.buildIconButton("left"), this.buildIconButton("enter"), this.buildIconButton("right")];
-                        let down_row = [this.buildIconButton("down")];
-                        navigation_row = [up_row, middle_row, down_row];
-                    } else if (this._config.navigation_row == "touchpad") {
-                        var touchpad = [html `
-                            <toucharea
-                                id="toucharea"
-                                @click="${this.onClick}"
-                                @dblclick="${this.onDoubleClick}"
-                                @touchstart="${this.onTouchStart}"
-                                @touchmove="${this.onTouchMove}"
-                                @touchend="${this.onTouchEnd}">
-                            </toucharea>
+					if (this.rows.navigation_row == "buttons") {
+						let up_row = [this.buildIconButton("up")];
+						let middle_row = [
+							this.buildIconButton("left"),
+							this.buildIconButton("enter"),
+							this.buildIconButton("right"),
+						];
+						let down_row = [this.buildIconButton("down")];
+						navigation_row = [up_row, middle_row, down_row];
+					} else if (this.rows.navigation_row == "touchpad") {
+						var touchpad = [html `
+								<toucharea
+									id="toucharea"
+									@click="${this.onClick}"
+									@dblclick="${this.onDoubleClick}"
+									@touchstart="${this.onTouchStart}"
+									@touchmove="${this.onTouchMove}"
+									@touchend="${this.onTouchEnd}">
+ 								</toucharea>
                         `];
-                        navigation_row = [touchpad];
-                    }
-                    content.push(...navigation_row);
-                } else {
-                    let row_content = this.buildButtonsFromActions(row_actions);
-                    content.push(row_content);
-                }
-            }
-        });
+						navigation_row = [touchpad];
+					} else if (this.rows.navigation_row == "touch") {
+						var touchpad = [
+							html`
+								<toucharea
+									id="toucharea"
+									@click="${this.onClick}"
+									@dblclick="${this.onDoubleClick}"
+									@touchstart="${this.onTouchStart}"
+									@touchmove="${this.onTouchMove}"
+									@touchend="${this.onTouchEnd}"
+								>
+								</toucharea>
+							`,
+						];
+						navigation_row = [touchpad];		
+					}
+					content.push(...navigation_row);
+                 
+				} else if (row_name === "numpad_row") {
+					if (this.rows.numpad_row == true || this.rows.this.rows.numpad_row == "buttons") {
+						let numpad_row = [
+							[
+								this.buildIconButton("num_1"),
+								this.buildIconButton("num_2"),
+								this.buildIconButton("num_3"),
+							],
+							[
+								this.buildIconButton("num_4"),
+								this.buildIconButton("num_5"),
+								this.buildIconButton("num_6"),
+							],
+							[
+								this.buildIconButton("num_7"),
+								this.buildIconButton("num_8"),
+								this.buildIconButton("num_9"),
+							],
+							[
+								this.buildIconButton("channel_down"),
+								this.buildIconButton("num_0"),
+								this.buildIconButton("channel_up"),
+							],
+						];
+						content.push(...numpad_row);
+					}
+				}
+			} else {
+				if (!!row_actions) {
+					let row_content = this.buildButtonsFromActions(row_actions);
+					content.push(row_content);
+				}
+			}
+		});
 
         content = content.map(this.buildRow);
 
@@ -364,18 +628,21 @@ class TVCardServices extends LitElement {
         return html `
             <style>
                 .remote {
-                    padding: 16px 0px 16px 0px;
+                    padding: 5px 0px 5px 0px;
                 }
                 img,
                 ha-icon-button {
-                    width: 64px;
-                    height: 64px;
+                    width: 36px;
+                    height: 36px;
                     cursor: pointer;
-                    --mdc-icon-size: 100%;
+                    --mdc-icon-size: 90%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
                 }
                 .row {
                     display: flex;
-                    padding: 8px 36px 8px 36px;
+                    padding: 10px 0px 10px 0px;
                     justify-content: space-evenly;
                 }
                 .diagonal {
@@ -384,7 +651,7 @@ class TVCardServices extends LitElement {
                 toucharea {
                     border-radius: 30px;
                     flex-grow: 1;
-                    height: 250px;
+                    height: 160px;
                     background: #6d767e;
                     touch-action: none;
                     text-align: center;
