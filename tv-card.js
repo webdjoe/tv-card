@@ -27,7 +27,7 @@ class TVCardServices extends LitElement {
         this.custom_keys = {};
         this.custom_sources = {};
         this.custom_icons = {};
-		this.state_entity = '';	
+	this.state_entity = '';	
         this.rows = {};
 
         this.holdtimer = null;
