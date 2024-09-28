@@ -63,11 +63,11 @@ There also `volume_row` and `navigation_row`, but these requires a string as val
 
 ## **Notice**
 
-This card uses `media_player.play_media` to send keys to the TV.
+This card uses per default `media_player.play_media` to send keys to the TV.
 This is the way [ollo69's SamsungTV Smart Component](https://github.com/ollo69/ha-samsungtv-smart) (which i based this card on) works, but don't worry: if your TV is from another brand or simply the TV integration does not use `media_player.play_media` for sending keys, you can still use this card by setting [custom buttons](#custom-buttons) with services to send keys to your TV (or do whatever you want) in your way (just like the original [tv-card](https://github.com/marrobHD/tv-card)).
 
 Another possibility for TV integration does not use `media_player.play_media` is to use `input_text.command` entity instead. 
-In this case the advantage is, all in card implemented KEY's are already ready to use - platform independent. 
+In this case the advantage is, all in card implemented KEY's are already ready to use - platform dependent. 
 For TV's not working with Power 'KEY' there is an option`state_entity` provided to switch the TV on/off - if such entity is available.
 
 ## Custom buttons
