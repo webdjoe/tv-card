@@ -39,7 +39,7 @@ class TVCardServices extends LitElement {
     static get properties() {
         return {
             _hass: {},
-		    _config: {},
+	    _config: {},
             _apps: {},
             trigger: {},
         };
@@ -197,28 +197,28 @@ class TVCardServices extends LitElement {
                     "play": {"key": "KEY_PLAY", "icon": "mdi:play"},
                     "pause": {"key": "KEY_PAUSE", "icon": "mdi:pause"},
                     "fast_forward": {"key": "KEY_FF", "icon": "mdi:fast-forward"},
-					"num_1": {"key": "KEY_1", "icon": "mdi:numeric-1"},
-					"num_2": {"key": "KEY_2", "icon": "mdi:numeric-2"},
-					"num_3": {"key": "KEY_3", "icon": "mdi:numeric-3"},
-					"num_4": {"key": "KEY_4", "icon": "mdi:numeric-4"},
-					"num_5": {"key": "KEY_5", "icon": "mdi:numeric-5"},
-					"num_6": {"key": "KEY_6", "icon": "mdi:numeric-6"},
-					"num_7": {"key": "KEY_7", "icon": "mdi:numeric-7"},
-					"num_8": {"key": "KEY_8", "icon": "mdi:numeric-8"},
-					"num_9": {"key": "KEY_9", "icon": "mdi:numeric-9"},
-					"num_0": {"key": "KEY_0", "icon": "mdi:numeric-0"},
-					"redbutton": {"key": "KEY_RED", "icon": "mdi:alpha-r-box"},
-					"greenbutton": {"key": "KEY_GREEN", "icon": "mdi:alpha-g-box"},
-					"yellowbutton": {"key": "KEY_YELLOW", "icon": "mdi:alpha-y-box"},
-					"bluebutton": {"key": "KEY_BLUE", "icon": "mdi:alpha-b-box"},
-                };
+                    "num_1": {"key": "KEY_1", "icon": "mdi:numeric-1"},
+                    "num_2": {"key": "KEY_2", "icon": "mdi:numeric-2"},
+                    "num_3": {"key": "KEY_3", "icon": "mdi:numeric-3"},
+                    "num_4": {"key": "KEY_4", "icon": "mdi:numeric-4"},
+                    "num_5": {"key": "KEY_5", "icon": "mdi:numeric-5"},
+                    "num_6": {"key": "KEY_6", "icon": "mdi:numeric-6"},
+                    "num_7": {"key": "KEY_7", "icon": "mdi:numeric-7"},
+                    "num_8": {"key": "KEY_8", "icon": "mdi:numeric-8"},
+                    "num_9": {"key": "KEY_9", "icon": "mdi:numeric-9"},
+                    "num_0": {"key": "KEY_0", "icon": "mdi:numeric-0"},
+                    "redbutton": {"key": "KEY_RED", "icon": "mdi:alpha-r-box"},
+                    "greenbutton": {"key": "KEY_GREEN", "icon": "mdi:alpha-g-box"},
+                    "yellowbutton": {"key": "KEY_YELLOW", "icon": "mdi:alpha-y-box"},
+                    "bluebutton": {"key": "KEY_BLUE", "icon": "mdi:alpha-b-box"},
+               };
             }
         }
 
         this.custom_keys    = config.custom_keys || {};
         this.custom_sources = config.custom_sources || {};
         this.custom_icons   = config.custom_icons || {};
-		this.state_entity   = config.state_entity || {};
+	this.state_entity   = config.state_entity || {};
         this.rows           = config.rows || {};
         
         this.loadCardHelpers();
@@ -283,7 +283,7 @@ class TVCardServices extends LitElement {
         let entity_id = this._config.entity;
 		let platform = entity_id.match('input_text.') ? 'command' : this._config.platform;
         switch ( platform ) {
-		case("androidtv"):
+        case("androidtv"):
             this._hass.callService("androidtv", "adb_command", {
                 command: key
             }, { entity_id: entity_id });
@@ -293,19 +293,19 @@ class TVCardServices extends LitElement {
                 button: key
             }, { entity_id: entity_id });
         break;
-        case("samsungtv"):
-			this._hass.callService("media_player", "play_media", {
-				media_content_id: key,
-				media_content_type: "send_key",
-			}, { entity_id: entity_id });
-		break;
-		default: // command via input_text. entity
-			if( entity_id.match('input_text.') ) {
-				this._hass.callService("input_text", "set_value",  { 
-					entity_id: entity_id, value: key, });
-			}else {
-				console.log("Invalid: no platform/(input text.) entity");
-			}
+	case("command"):  // command via input_text. entity
+	    this._hass.callService("input_text", "set_value",  { 
+		entity_id: entity_id, value: key, });
+	break;
+        default:  // samsungtv, braviatv, roku via 'media_player'
+	    if( platform != '' && entity_id.match('media_player.') ) {
+	        this._hass.callService("media_player", "play_media", {
+		    media_content_id: key,
+		    media_content_type: "send_key",
+	        }, { entity_id: entity_id });		
+	    }else {
+	        console.log("Invalid: no platform/(input text.) entity");
+	    }
         }  //  switch (
     }  //   sendKey(key) {
 
