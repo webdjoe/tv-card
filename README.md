@@ -29,7 +29,7 @@
 | ---- | ---- | ------- | -----------
 | type | string | **Required** | `custom:tv-card`
 | entity | string | **Required** | The `media_player` or `text_input.command` entity to control
-| state_entity | string | **Optional** | The `state` entity to controll power on/off
+| state_entity | string | **Optional** | The `state` entity to controll power button color
 | title | string | **Optional** | Card title for showing as header
 | enable_double_click | boolean | **Optional** | Whether a double click on the touchpad should send the key in `double_click_keycode`. Defaults to `true`.
 | double_click_keycode | string | **Optional** | The key for double clicks on the touchpad. Defaults to `KEY_RETURN`
@@ -70,7 +70,7 @@ Another possibility for TV integration does not use `media_player.play_media` is
 In this case the advantage is, all in card implemented KEY's are already ready to use - platform dependent. 
 This does not apply Roku, which uses card internal predefined hass service `remote.send_command`.
 
-For TV's not working with Power 'KEY' there is an option`state_entity` provided to switch the TV on/off - if such entity is available.
+For TV's not working with Power 'KEY' there is an option`state_entity` provided to switch the power button color - if such entity is available.
 
 ## Custom buttons
 
