@@ -14,7 +14,7 @@
 - Fully functional touchpad for navigation (thanks to [iablon's Touchpad Card](https://github.com/iablon/HomeAssistant-Touchpad-Card)) ❤️
 - Slider for volume (thanks to [AnthonMS's Slider Card](https://github.com/AnthonMS/my-cards#slider-card)) ❤️
 - Supports [ollo69's SamsungTV Smart Component](https://github.com/ollo69/ha-samsungtv-smart)
-- Added [coen1111's Support for color buttons row and digit rows](https://github.com/usernein/tv-card/pull/24)
+- Add [coen1111's Support for color buttons row and digit rows](https://github.com/usernein/tv-card/pull/24)
 - Much easier setup
 - Implements haptics feedback
 - Customizable layout, you can choose the order of the rows and buttons
@@ -30,6 +30,9 @@
 | ---- | ---- | ------- | -----------
 | type | string | **Required** | `custom:tv-card`
 | entity | string | **Required** | The `media_player` or `text_input.command` entity to control
+| platform | string | **Optional** | `samsungtv` | Platform of `media_player`. Supported values: `samsungtv`, `androidtv`, `webostv`, `roku`, `braviatv`
+| remote_entity | string | **Optional** | `remote.{{entity_id}}` | The remote entity that controls the Roku and Bravia `media_player`
+| volume_entity | string | **Optional** | `entity` | The `media_player` entity for volume control (working only with volume_row: `slider`)
 | state_entity | string | **Optional** | The `state` entity to controll power button color
 | title | string | **Optional** | Card title for showing as header
 | enable_double_click | boolean | **Optional** | Whether a double click on the touchpad should send the key in `double_click_keycode`. Defaults to `true`.
