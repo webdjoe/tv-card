@@ -14,7 +14,10 @@
 - Fully functional touchpad for navigation (thanks to [iablon's Touchpad Card](https://github.com/iablon/HomeAssistant-Touchpad-Card)) ❤️
 - Slider for volume (thanks to [AnthonMS's Slider Card](https://github.com/AnthonMS/my-cards#slider-card)) ❤️
 - Supports [ollo69's SamsungTV Smart Component](https://github.com/ollo69/ha-samsungtv-smart)
-- Add [coen1111's Support for color buttons row and digit rows](https://github.com/usernein/tv-card/pull/24)
+- Supports [LG webOS Smart TV](https://www.home-assistant.io/integrations/webostv/)
+- Supports [Android TV](https://www.home-assistant.io/integrations/androidtv/)
+- Supports [Sony Bravia TV](https://www.home-assistant.io/integrations/braviatv)
+- Supports [Color buttons row and digit rows](https://github.com/usernein/tv-card/pull/24)
 - Much easier setup
 - Implements haptics feedback
 - Customizable layout, you can choose the order of the rows and buttons
@@ -22,59 +25,66 @@
 
 ## Demo
 
-<img src="assets/screenshot.png" alt="ex" width="300"/>
+<img width="308" alt="image" src="https://github.com/user-attachments/assets/dd6126ca-8e53-4cc9-9b2f-a04df4108cac">
+<img width="310" alt="image" src="https://github.com/user-attachments/assets/620ca8ba-fc4e-43b3-b2f5-b471d0a83c0e">
 
 ## Options
 
-| Name | Type | Requirement | Description
-| ---- | ---- | ------- | -----------
-| type | string | **Required** | `custom:tv-card`
-| entity | string | **Required** | The `media_player` or `text_input.command` entity to control
+| Name | Type | Requirement | Default |Description
+| ---- | ---- | ------- | ---- | -----------
+| type | string | **Required** | | `custom:tv-card`
+| entity | string | **Required** | | The `media_player` entity to control.
+| title | string | **Optional** | | Card title for showing as header.
 | platform | string | **Optional** | `samsungtv` | Platform of `media_player`. Supported values: `samsungtv`, `androidtv`, `webostv`, `roku`, `braviatv`
 | remote_entity | string | **Optional** | `remote.{{entity_id}}` | The remote entity that controls the Roku and Bravia `media_player`
 | volume_entity | string | **Optional** | `entity` | The `media_player` entity for volume control (working only with volume_row: `slider`)
-| state_entity | string | **Optional** | The `state` entity to controll power button color
-| title | string | **Optional** | Card title for showing as header
-| enable_double_click | boolean | **Optional** | Whether a double click on the touchpad should send the key in `double_click_keycode`. Defaults to `true`.
-| double_click_keycode | string | **Optional** | The key for double clicks on the touchpad. Defaults to `KEY_RETURN`
-| enable_button_feedback | boolean | **Optional** | Shall clicks on the buttons return a vibration feedback? Defaults to `true`.
-| enable_slider_feedback | boolean | **Optional** | Shall the volume slider return a vibration feedback when you slide through it? Defaults to `true`.
-| slider_config | object | **Optional** | Custom configuration for the volume slider. See [slider-card](https://github.com/AnthonMS/my-cards)
-| custom_keys | object | **Optional** | Custom keys for the remote control. Each item is an object that should have `icon` and at least one of the following properties: `key`, `source`, `service`.
-| custom_sources | object | **Optional** | Custom sources for the remote control. Same object as above, but letting you split keys and sources.
+| state_entity | string | **Optional** | `entity` | The `state` entity to controll power button color
+| rows | object | **Optional** | | Button rows
+| enable_double_click | boolean | **Optional** | `true` | Whether a double click on the touchpad should send the key in `double_click_action`
+| double_click_action | string | **Optional** | `return` | The action for double clicks on the touchpad. Defaults to `return`
+| enable_button_feedback | boolean | **Optional** | `true` | Shall clicks on the buttons return a vibration feedback?
+| enable_slider_feedback | boolean | **Optional** | `true` | Shall the volume slider return a vibration feedback when you slide through it?
+| slider_config | object | **Optional** | | Custom configuration for the volume slider. See [slider-card](https://github.com/AnthonMS/my-cards)
+| custom_keys | object | **Optional** | | Custom keys for the remote control. Each item is an object that should have `icon` and at least one of the following properties: `key`, `source`, `service`.
+| custom_sources | object | **Optional** | | Custom sources for the remote control. Same object as above, but letting you split keys and sources.
 
 Using only these options you will get an empty card (or almost empty, if you set a title).
 In order to include the buttons, you need to specify in the config the rows you want and which buttons you want in it.
 You do it by declaring the rows as arrays and its buttons as values, like this:
 
 ```yaml
-power_row:
-  - power
-media_control_row:
-  - rewind
-  - play
-  - pause
-  - fast_forward
+rows:
+  power_row:
+    - power
+  media_control_row:
+    - rewind
+    - play
+    - pause
+    - fast_forward
+  volume_row: slider
+  numpad_row: true
+  navigation_row: touchpad
 ```
 
-The available rows are `power_row`, `channel_row`, `apps_row`, `source_row` and `media_control_row`
-There also `volume_row` and `navigation_row`, but these requires a string as value.
+The preset rows are `volume_row`, `numpad_row` and `navigation_row`, which requires a string or boolean as value.
 
 | Name | Type | Description
 | ---- | ---- | -------
 | volume_row | string | Can be either `slider` or `buttons`. This defines the mode you want for setting the volume (you'll see them soon below). You need to have [slider-card](https://github.com/AnthonMS/my-cards) installed in order to use `slider`.
+| numpad_row | boolean | If `true`, numpad row will show.
 | navigation_row | string | Can be either `touchpad` or `buttons`. This defines the mode you want for navigating around your tv (you'll also see them soon below).
 
 ## **Notice**
 
-This card uses per default `media_player.play_media` to send keys to the TV.
-This is the way [ollo69's SamsungTV Smart Component](https://github.com/ollo69/ha-samsungtv-smart) (which i based this card on) works, but don't worry: if your TV is from another brand or simply the TV integration does not use `media_player.play_media` for sending keys, you can still use this card by setting [custom buttons](#custom-buttons) with services to send keys to your TV (or do whatever you want) in your way (just like the original [tv-card](https://github.com/marrobHD/tv-card)).
+This card supports `androidtv`, `webostv`, `roku`, `braviatv` and `samsungtv` out of the box. If your TV is from another brand you can use this card by setting [custom buttons](#custom-buttons) with services to send keys to your TV (or do whatever you want) in your way.
+If you have time and wanna help, you can add new integrations to this card. Check [this PR](https://github.com/usernein/tv-card/pull/8).
+Platform `webostv` doesn't support power key (see [webOS Integration](https://www.home-assistant.io/integrations/webostv/#turn-on-action))
+
+This card uses per default `media_player.play_media` to send keys to the TV. This is the way [ollo69's SamsungTV Smart Component](https://github.com/ollo69/ha-samsungtv-smart) (which this card is based on) works, but don't worry: if your TV is from another brand or simply the TV integration does not use `media_player.play_media` for sending keys, you can still use this card by setting [custom buttons](#custom-buttons) with services to send keys to your TV (or do whatever you want) in your way (just like the original [tv-card](https://github.com/marrobHD/tv-card)).
 
 Another possibility for TV integration does not use `media_player.play_media` is to use `input_text.command` entity instead.
 In this case the advantage is, all in card implemented KEY's are already ready to use - platform dependent. 
 This does not apply Roku, which uses card internal predefined hass service `remote.send_command`.
-
-For TV's not working with Power 'KEY' there is an option`state_entity` provided to switch the power button color - if such entity is available.
 
 ## Custom buttons
 
@@ -116,16 +126,17 @@ custom_sources:
 Then you can easily use these buttons in your card:
 
 ```yaml
-power_row:
-  - browser
-  - power
-  - input_tv
-media_control_row:
-  - rewind
-  - play
-  - pause
-  - fast_forward
-  - toggle_light
+rows:
+  power_row:
+    - browser
+    - power
+    - input_tv
+  media_control_row:
+    - rewind
+    - play
+    - pause
+    - fast_forward
+    - toggle_light
 ```
 
 <img src="assets/custom_keys.png" alt="guide" width="300"/>
@@ -204,27 +215,28 @@ Add a custom element in your `ui-lovelace.yaml`
 ```yaml
       - type: custom:tv-card
         entity: media_player.tv
-        power_row:
-          - power
-        channel_row:
-          - channel_up
-          - info
-          - channel_down
-        apps_row:
-          - netflix
-          - youtube
-          - spotify
-        volume_row: slider
-        navigation_row: touchpad
-        source_row:
-          - return
-          - home
-          - source
-        media_control_row:
-          - rewind
-          - play
-          - pause
-          - fast_forward
+        rows:
+          power_row:
+            - power
+          channel_row:
+            - channel_up
+            - info
+            - channel_down
+          apps_row:
+            - netflix
+            - youtube
+            - spotify
+          volume_row: slider
+          navigation_row: touchpad
+          source_row:
+            - return
+            - home
+            - source
+          media_control_row:
+            - rewind
+            - play
+            - pause
+            - fast_forward
 ```
 
 ### Example 1
@@ -234,30 +246,32 @@ Playing with order, moving and repeating buttons:
 ```yaml
 type: custom:tv-card
 entity: media_player.tv
+platform: samsungtv
 title: Example 1
-power_row:
-  - power
-source_row:
-  - return
-  - home
-  - source
-  - netflix
-apps_row:
-  - youtube
-  - spotify
-  - netflix
-navigation_row: touchpad
-volume_row: slider
-channel_row:
-  - channel_up
-  - channel_down
-  - info
-media_control_row:
-  - rewind
-  - play
-  - spotify
-  - pause
-  - fast_forward
+rows:
+  power_row:
+    - power
+  source_row:
+    - return
+    - home
+    - source
+    - netflix
+  apps_row:
+    - youtube
+    - spotify
+    - netflix
+  navigation_row: touchpad
+  volume_row: slider
+  channel_row:
+    - channel_up
+    - channel_down
+    - info
+  media_control_row:
+    - rewind
+    - play
+    - spotify
+    - pause
+    - fast_forward
 ```
 
 Result:
@@ -271,28 +285,30 @@ Buttons, buttons everywhere!
 ```yaml
 type: custom:tv-card
 entity: media_player.tv
+platform: samsungtv
 title: Example 2
-power_row:
-  - power
-channel_row:
-  - channel_up
-  - info
-  - channel_down
-apps_row:
-  - netflix
-  - youtube
-  - spotify
-volume_row: buttons
-navigation_row: buttons
-source_row:
-  - return
-  - home
-  - source
-media_control_row:
-  - rewind
-  - play
-  - pause
-  - fast_forward
+rows:
+  power_row:
+    - power
+  channel_row:
+    - channel_up
+    - info
+    - channel_down
+  apps_row:
+    - netflix
+    - youtube
+    - spotify
+  volume_row: buttons
+  navigation_row: buttons
+  source_row:
+    - return
+    - home
+    - source
+  media_control_row:
+    - rewind
+    - play
+    - pause
+    - fast_forward
 ```
 
 Result:
@@ -306,18 +322,20 @@ Using less
 ```yaml
 type: custom:tv-card
 entity: media_player.tv
+platform: samsungtv
 title: Example 3
-power_row:
-  - power
-apps_row:
-  - netflix
-  - youtube
-  - spotify
-volume_row: slider
-navigation_row: touchpad
-source_row:
-  - return
-  - home
+rows:
+  power_row:
+    - power
+  apps_row:
+    - netflix
+    - youtube
+    - spotify
+  volume_row: slider
+  navigation_row: touchpad
+  source_row:
+    - return
+    - home
 ```
 
 Result:
@@ -329,15 +347,16 @@ Result:
 In any row, if you add an ampty item, there will be an empty/invisible button filling the space:
 
 ```yaml
-source_row:
-  - return
-  - home
-  - source
-media_control_row:
-  - rewind
-  -
-  - 
-  - fast-forward
+rows:
+  source_row:
+    - return
+    - home
+    - source
+  media_control_row:
+    - rewind
+    -
+    - 
+    - fast-forward
 ```
 
 <img src="assets/empty_buttons.png" alt="empty buttons example" width="300"/>
