@@ -19,6 +19,7 @@ var fireEvent = function(node, type, detail, options) {
 
     });
     event.detail = detail;
+    console.log(event)
     node.dispatchEvent(event);
     return event;
 };
