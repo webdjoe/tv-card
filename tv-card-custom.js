@@ -335,7 +335,7 @@ class TVCardServices extends LitElement {
             delete tap_action.fire_service;
 
             let eventDetails = {}
-            eventDetails.entity_id = this._config.entity;
+            eventDetails.entity = this._config.entity;
             tap_action.action = info.fire_service;
             eventDetails.tap_action = tap_action;
             console.info(eventDetails);
