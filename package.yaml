@@ -1,5 +1,5 @@
-name: TV Card
-description: 📺 TV Remote Card
+name: TV Card Custom
+description: TV Remote Card Custom Edit
 type: lovelace
 keywords:
   - tvcard

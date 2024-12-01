@@ -13,12 +13,20 @@ var fireEvent = function(node, type, detail, options) {
     options = options || {};
     detail = detail === null || detail === undefined ? {} : detail;
     var event = new Event(type, {
-        bubbles: false,
+        bubbles: options.bubbles === undefined ? true : options.bubbles,
+        cancelable: Boolean(options.cancelable),
+        composed:  options.composed === undefined ? true : options.composed,
+
     });
     event.detail = detail;
     node.dispatchEvent(event);
     return event;
 };
+
+const handleAction = async (node, _hass, config, action, ) => {
+    fireEvent(node, 'hass-action', { config, action });
+  };
+
 
 class TVCardServices extends LitElement {
     constructor() {
@@ -27,7 +35,7 @@ class TVCardServices extends LitElement {
         this.custom_keys = {};
         this.custom_sources = {};
         this.custom_icons = {};
-	this.state_entity = '';	
+	this.state_entity = '';
         this.rows = {};
 
         this.holdtimer = null;
@@ -44,7 +52,7 @@ class TVCardServices extends LitElement {
             trigger: {},
         };
     }
-	
+
 	static getStubConfig() {
         return {};
     }
@@ -54,7 +62,7 @@ class TVCardServices extends LitElement {
         if (this.volume_slider) this.volume_slider.hass = hass;
         if (this._hassResolve) this._hassResolve();
     }
-	
+
     getCardSize() {
         return 7;
     }
@@ -218,9 +226,9 @@ class TVCardServices extends LitElement {
         this.custom_keys    = config.custom_keys || {};
         this.custom_sources = config.custom_sources || {};
         this.custom_icons   = config.custom_icons || {};
-	this.state_entity   = config.state_entity || {};
+	    this.state_entity   = config.state_entity || {};
         this.rows           = config.rows || {};
-        
+
         this.loadCardHelpers();
         this.renderVolumeSlider();
     }
@@ -294,7 +302,7 @@ class TVCardServices extends LitElement {
             }, { entity_id: entity_id });
         break;
 	case("command"):  // command via input_text. entity
-	    this._hass.callService("input_text", "set_value",  { 
+	    this._hass.callService("input_text", "set_value",  {
 		entity_id: entity_id, value: key, });
 	break;
         default:  // samsungtv, braviatv, roku via 'media_player'
@@ -302,7 +310,7 @@ class TVCardServices extends LitElement {
 	        this._hass.callService("media_player", "play_media", {
 		    media_content_id: key,
 		    media_content_type: "send_key",
-	        }, { entity_id: entity_id });		
+	        }, { entity_id: entity_id });
 	    }else {
 	        console.log("Invalid: no platform/(input text.) entity");
 	    }
@@ -311,7 +319,7 @@ class TVCardServices extends LitElement {
 
     sendAction(action){
         let info = this.custom_keys[action] || this.custom_sources[action] || this.keys[action] || sources[action];
-
+        console.info(info);
         if (info.key) {
             this.sendKey(info.key);
         }
@@ -321,6 +329,17 @@ class TVCardServices extends LitElement {
         else if (info.service) {
             const [domain, service] = info.service.split(".", 2);
             this._hass.callService(domain, service, info.service_data);
+        } else if (info.fire_service) {
+            let tap_action = structuredClone(info);
+            delete tap_action.fire_service;
+
+            let eventDetails = {}
+            eventDetails.entity_id = this._config.entity;
+            tap_action.action = info.fire_service;
+            eventDetails.tap_action = tap_action;
+            console.info(eventDetails);
+            handleAction(this, this._hass, eventDetails, 'tap')
+
         }
     }
 
@@ -339,7 +358,7 @@ class TVCardServices extends LitElement {
         let click_action = () => {
             this.sendAction("enter")
             if (this._config.enable_button_feedback === undefined || this._config.enable_button_feedback) fireEvent(window, "haptic", "light");
-        };  
+        };
         if (this._config.enable_double_click) {
             this.timer = setTimeout(click_action, 200);
         } else {
@@ -435,7 +454,7 @@ class TVCardServices extends LitElement {
         let custom_svg_path = this.custom_icons[icon];
         let color = ""; // var(--icon-primary-color);
 		color = this._getIconColor(action);
-		
+
         return html`
             <ha-icon-button
                 .action="${action}"
@@ -446,15 +465,15 @@ class TVCardServices extends LitElement {
                 <ha-icon
                     .icon="${!custom_svg_path? icon : ""}"
 					style="color: ${color}"
-                </ha-icon>
+                    ></ha-icon>
             </ha-icon-button>
         `;
     }
-	
+
 	//	style="color='${color}'"
 	//	--card-mod-icon-color:"${color}"
 	//	color="${color}"
-				
+
     _getIconColor(_action) {
 		let color = ''; // var(--icon-primary-color);
 		switch(_action) {
@@ -462,13 +481,13 @@ class TVCardServices extends LitElement {
 				color = 'gold';
 				this._state = this._getStateValue(this.state_entity);
 				if( this._state == "" ) return color;
-		
+
 				switch(this._state) {
 					case('true'):
 					case('on'): color = 'tomato'; break;
 					case('false'):
 					case('off'): color = 'lime'; break
-					default: color = this._state.toString();	
+					default: color = this._state.toString();
 				}
 				break;
 			case('redbutton'):    color = 'tomato'; break;
@@ -480,10 +499,10 @@ class TVCardServices extends LitElement {
 		}
 		return color;
 	}
-	
+
 	_getStateValue(entity) {
 		let stateStr = '';
-	  
+
 		if (this._hass && this._hass.states[entity]) {
 			const state = this._hass.states[entity];
 			stateStr = state.state || state.state == "" ? state.state.toString() : "Unavailable";  // .toString() escape 0 as false
@@ -491,12 +510,12 @@ class TVCardServices extends LitElement {
 				throw new Error(`Entity ${entity} State Unavailable`);
 			}
 			return stateStr;
-		}else if( entity != '' ) {  // entity is config string 
+		}else if( entity != '' ) {  // entity is config string
 			return entity;
 		}
 		return '';
 	}
-	
+
     buildRow(content) {
         return html `
             <div class="row">
@@ -504,7 +523,7 @@ class TVCardServices extends LitElement {
             </div>
         `;
     }
-	
+
     buildButtonsFromActions(actions) {
         return actions.map((action) => this.buildIconButton(action));
     }
@@ -512,7 +531,7 @@ class TVCardServices extends LitElement {
     triggerRender() {
         this.trigger = Math.random();
     }
-    
+
     render() {
         if (!this._config || !this._hass || !this.volume_slider) {
             return html ``;
@@ -575,10 +594,10 @@ class TVCardServices extends LitElement {
 								</toucharea>
 							`,
 						];
-						navigation_row = [touchpad];		
+						navigation_row = [touchpad];
 					}
 					content.push(...navigation_row);
-                 
+
 				} else if (row_name === "numpad_row") {
 					if (this.rows.numpad_row == true || this.rows.this.rows.numpad_row == "buttons") {
 						let numpad_row = [
@@ -700,4 +719,4 @@ class TVCardServices extends LitElement {
     }
 }
 
-customElements.define("tv-card", TVCardServices);
+customElements.define("tv-card-custom", TVCardServices);
